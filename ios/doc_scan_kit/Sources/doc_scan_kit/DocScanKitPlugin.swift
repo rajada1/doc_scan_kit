@@ -73,14 +73,66 @@ public class DocScanKitPlugin: NSObject, FlutterPlugin {
       let recognitionLanguages = iosOptions["recognitionLanguages"] as? [String] ?? []
 
       // Convert FlutterStandardTypedData to UIImage
-      if let image = UIImage(data: imageBytes.data) {
-
-          let recognizedText = TextRecognizeViewController().recognizeText(from: image, recognitionLevel: recognitionLevel, usesLanguageCorrection: usesLanguageCorrection, customWords: customWords, recognitionLanguages: recognitionLanguages)
-          result(recognizedText)
-      } else {
-          result(FlutterError(code: "image_error",
+      guard let image = UIImage(data: imageBytes.data) else {
+          return result(FlutterError(code: "image_error",
                              message: "Failed to create image from bytes",
                              details: nil))
+      }
+      
+      // Execute recognition in background thread
+      DispatchQueue.global(qos: .userInitiated).async {
+          let recognizedText = TextRecognizeViewController().recognizeText(
+              from: image,
+              recognitionLevel: recognitionLevel,
+              usesLanguageCorrection: usesLanguageCorrection,
+              customWords: customWords,
+              recognitionLanguages: recognitionLanguages
+          )
+          
+          // Return result on main thread
+          DispatchQueue.main.async {
+              result(recognizedText)
+          }
+      }
+      
+    case "vision#startTextRecognizer":
+      guard let args = call.arguments as? [String: Any],
+            let imageData = args["imageData"] as? [String: Any],
+            let imageBytes = imageData["bytes"] as? FlutterStandardTypedData,
+            let iosOptions = args["iosOptions"] as? [String: Any] else {
+        return result(FlutterError(code: "invalid_arguments",
+                                   message: "Invalid or missing image data or iOS options",
+                                   details: "Expected image bytes and iOS options for detailed text recognition"))
+      }
+
+      // Extract recognition options
+      let recognitionLevelInt = iosOptions["recognitionLevel"] as? Int ?? 0
+      let recognitionLevel: VNRequestTextRecognitionLevel = recognitionLevelInt == 0 ? .accurate : .fast
+      let usesLanguageCorrection = iosOptions["usesLanguageCorrection"] as? Bool ?? true
+      let customWords = iosOptions["customWords"] as? [String] ?? []
+      let recognitionLanguages = iosOptions["recognitionLanguages"] as? [String] ?? []
+
+      // Convert FlutterStandardTypedData to UIImage
+      guard let image = UIImage(data: imageBytes.data) else {
+          return result(FlutterError(code: "image_error",
+                             message: "Failed to create image from bytes",
+                             details: nil))
+      }
+      
+      // Execute detailed recognition in background thread
+      DispatchQueue.global(qos: .userInitiated).async {
+          let detailedResult = TextRecognizeViewController().recognizeTextDetailed(
+              from: image,
+              recognitionLevel: recognitionLevel,
+              usesLanguageCorrection: usesLanguageCorrection,
+              customWords: customWords,
+              recognitionLanguages: recognitionLanguages
+          )
+          
+          // Return result on main thread
+          DispatchQueue.main.async {
+              result(detailedResult)
+          }
       }
       
     case "scanKit#scanQrCode":
@@ -92,14 +144,20 @@ public class DocScanKitPlugin: NSObject, FlutterPlugin {
       }
 
       // Convert FlutterStandardTypedData to UIImage
-      if let image = UIImage(data: imageBytes.data) {
-
-          let barcodeResults = TextRecognizeViewController().detectBarcode(from: image)
-          result(barcodeResults)
-      } else {
-          result(FlutterError(code: "image_error",
+      guard let image = UIImage(data: imageBytes.data) else {
+          return result(FlutterError(code: "image_error",
                              message: "Failed to create image from bytes",
                              details: nil))
+      }
+      
+      // Execute barcode detection in background thread
+      DispatchQueue.global(qos: .userInitiated).async {
+          let barcodeResults = TextRecognizeViewController().detectBarcode(from: image)
+          
+          // Return result on main thread
+          DispatchQueue.main.async {
+              result(barcodeResults)
+          }
       }
 
     case "scanKit#closeDocumentScanner":

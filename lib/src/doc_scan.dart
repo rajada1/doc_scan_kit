@@ -4,12 +4,10 @@ import 'doc_scan_kit_platform_interface.dart';
 class DocScanKit {
   final DocumentScanKitOptionsAndroid? androidOptions;
   final DocumentScanKitOptionsiOS? iosOptions;
-  final DocumentScanKitTextRecognitionOptionsiOS? textRecognitionOptions;
 
   DocScanKit({
     this.androidOptions,
     this.iosOptions,
-    this.textRecognitionOptions,
   });
 
   Future<List<ScanResult>> scanner() {
@@ -27,9 +25,20 @@ class DocScanKit {
   ]) {
     return DocScanKitPlatform.instance.recognizeText(
       imageBytes,
-      textRecognitionOptions ??
-          this.textRecognitionOptions ??
-          DocumentScanKitTextRecognitionOptionsiOS(),
+      textRecognitionOptions ?? DocumentScanKitTextRecognitionOptionsiOS(),
+    );
+  }
+
+  /// Recognizes text with full details (blocks, lines, elements, symbols)
+  ///
+  /// Returns a [TextRecognitionResult] containing the complete text hierarchy
+  Future<TextRecognitionResult> recognizeTextDetailed(
+    List<int> imageBytes, [
+    DocumentScanKitTextRecognitionOptionsiOS? textRecognitionOptions,
+  ]) {
+    return DocScanKitPlatform.instance.recognizeTextDetailed(
+      imageBytes,
+      textRecognitionOptions ?? DocumentScanKitTextRecognitionOptionsiOS(),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:doc_scan_kit/src/options/android_options.dart';
 import 'package:doc_scan_kit/src/options/ios_options.dart';
 import 'package:doc_scan_kit/src/options/ios_text_recognition_options.dart';
 import 'package:doc_scan_kit/src/options/scan_result.dart';
+import 'package:doc_scan_kit/src/options/text_recognition_result.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'doc_scan_kit_platform_interface.dart';
@@ -48,6 +49,32 @@ class MethodChannelDocScanKit extends DocScanKitPlatform {
       },
     );
     return result ?? '';
+  }
+
+  @override
+
+  /// Recognizes text with full details (blocks, lines, elements, symbols)
+  Future<TextRecognitionResult> recognizeTextDetailed(
+    List<int> imageBytes,
+    DocumentScanKitTextRecognitionOptionsiOS textRecognitionOptions,
+  ) async {
+    final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+      'vision#startTextRecognizer',
+      {
+        'imageData': {
+          'type': 'bytes',
+          'bytes': Uint8List.fromList(imageBytes),
+        },
+        'iosOptions': textRecognitionOptions.toJson(),
+        'id': id,
+      },
+    );
+
+    if (result == null) {
+      return TextRecognitionResult(text: '', blocks: []);
+    }
+
+    return TextRecognitionResult.fromMap(result);
   }
 
   @override

@@ -103,6 +103,55 @@ import 'package:doc_scan_kit/doc_scan_kit.dart';
 
 This example performs the scan and returns a list of images in `Uint8List` format.
 
+### Text Recognition with Full Lines Extraction
+
+When using text recognition, you can extract full lines of text that are grouped by their vertical position:
+
+```dart
+import 'package:doc_scan_kit/doc_scan_kit.dart';
+
+try {
+  final result = await docScanKitPlugin.scanner(
+    iosOptions: IOSOptions(
+      useTextRecognizer: true,
+      useDetailedTextRecognition: true,
+    ),
+  );
+  
+  // Get the text recognition result
+  final textResult = result.first.detailedText;
+  
+  if (textResult != null) {
+    // Extract full lines (groups text from same vertical position)
+    final fullLines = textResult.extractFullLines();
+    
+    // Process each line
+    for (final line in fullLines) {
+      print('Line: ${line.text}');
+      print('Position - Top: ${line.avgTop}, Bottom: ${line.avgBottom}');
+      print('Position - Left: ${line.minLeft}, Right: ${line.maxRight}');
+    }
+  }
+} on PlatformException catch (e) {
+  debugPrint('Failed $e');
+} finally {
+  docScanKitPlugin.close();
+}
+```
+
+The `extractFullLines()` method groups text lines that are at the same vertical position (Y-axis) into complete lines, even if they come from different text blocks. This is useful for:
+- Reading documents with multi-column layouts
+- Extracting table data
+- Processing forms with aligned fields
+- Any scenario where horizontal text alignment matters
+
+You can customize the vertical tolerance for grouping lines:
+
+```dart
+// Default tolerance is 10.0 pixels
+final fullLines = textResult.extractFullLines(yTolerance: 15.0);
+```
+
 ---
 
 ## Contributions

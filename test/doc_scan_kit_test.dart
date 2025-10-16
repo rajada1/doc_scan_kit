@@ -18,6 +18,15 @@ class MockDocScanKitPlatform
   }
 
   @override
+  Future<TextRecognitionResult> recognizeTextDetailed(
+    List<int> imageBytes,
+    DocumentScanKitTextRecognitionOptionsiOS textRecognitionOptions,
+  ) async {
+    return Future.value(
+        TextRecognitionResult(text: "Mocked detailed text", blocks: []));
+  }
+
+  @override
   Future<String> scanQrCode(List<int> imageBytes) async {
     return Future.value("Mocked QR code result");
   }

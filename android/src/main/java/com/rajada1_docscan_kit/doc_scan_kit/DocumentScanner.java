@@ -38,11 +38,13 @@ public class DocumentScanner implements MethodChannel.MethodCallHandler, PluginR
     private static final String START = "scanKit#startDocumentScanner";
     private static final String CLOSE = "scanKit#closeDocumentScanner";
     private static final String RECOGNIZE_TEXT = "scanKit#recognizeText";
+    private static final String RECOGNIZE_TEXT_DETAILED = "vision#startTextRecognizer";
     private static final String SCAN_QR_CODE = "scanKit#scanQrCode";
     private static final String TAG = "DocumentScanner";
     private final Map<String, GmsDocumentScanner> instance = new HashMap<>();
     private final Map<String, DocScanBarcodeScanner> instancesBarCode = new HashMap<>();
     private final Map<String, TextRecognizer> instancesTextRecognizer = new HashMap<>();
+    private final Map<String, MLKitTextRecognizer> instancesMLKitTextRecognizer = new HashMap<>();
     private  Map<String, Object> extractedOptions;
     private final ActivityPluginBinding binding;
     private MethodChannel.Result pendingResult = null;
@@ -69,6 +71,9 @@ public class DocumentScanner implements MethodChannel.MethodCallHandler, PluginR
                 break;
             case RECOGNIZE_TEXT:
                 startRecognizeText(call, result);
+                break;
+            case RECOGNIZE_TEXT_DETAILED:
+                startRecognizeTextDetailed(call, result);
                 break;
             case SCAN_QR_CODE:
                 startScanQrCode(call, result);
@@ -174,6 +179,8 @@ public class DocumentScanner implements MethodChannel.MethodCallHandler, PluginR
         GmsDocumentScanner scanner = instance.get(id);
         TextRecognizer  text = instancesTextRecognizer.get(id);
         DocScanBarcodeScanner barcode = instancesBarCode.get(id);
+        MLKitTextRecognizer mlKitText = instancesMLKitTextRecognizer.get(id);
+        
         if(scanner != null) instance.remove(id);
 
         if(text != null){
@@ -184,6 +191,11 @@ public class DocumentScanner implements MethodChannel.MethodCallHandler, PluginR
         if(barcode != null){
             barcode.close();
             instancesBarCode.remove(id);
+        }
+
+        if(mlKitText != null){
+            mlKitText.close();
+            instancesMLKitTextRecognizer.remove(id);
         }
     }
 
@@ -269,15 +281,52 @@ public class DocumentScanner implements MethodChannel.MethodCallHandler, PluginR
             result.error(TAG, "Failed to recognize text", e);
         }
     }
+
+    private void startRecognizeTextDetailed(MethodCall call, final MethodChannel.Result result) {
+        try {
+            String id = call.argument("id");
+            MLKitTextRecognizer mlKitTextRecognizer = instancesMLKitTextRecognizer.get(id);
+            
+            if (mlKitTextRecognizer == null) {
+                mlKitTextRecognizer = new MLKitTextRecognizer();
+                instancesMLKitTextRecognizer.put(id, mlKitTextRecognizer);
+            }
+
+            Map<String, Object> imageData = call.argument("imageData");
+            if (imageData == null) {
+                result.error(TAG, "Image data is null", null);
+                return;
+            }
+
+            InputImage inputImage = InputImageConverter.getInputImageFromData(imageData,
+                    binding.getActivity().getApplicationContext(), result);
+            if (inputImage == null) return;
+
+            mlKitTextRecognizer.processImage(inputImage, new MLKitTextRecognizer.TextRecognizerCallback() {
+                @Override
+                public void onSuccess(Map<String, Object> textResult) {
+                    result.success(textResult);
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    result.error(TAG, "Failed to recognize text", e);
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error in detailed text recognition", e);
+            result.error(TAG, "Failed to recognize text", e);
+        }
+    }
+
     private void startScanQrCode(MethodCall call, final MethodChannel.Result result) {
         try {
             String id = call.argument("id");
             DocScanBarcodeScanner barcodeScanner = instancesBarCode.get(id);
-            pendingResult = result;
+            
             if (barcodeScanner == null) {
                 barcodeScanner = new DocScanBarcodeScanner();
                 instancesBarCode.put(id, barcodeScanner);
-
             }
 
             byte[] imageBytes = call.argument("imageBytes");
@@ -285,14 +334,20 @@ public class DocumentScanner implements MethodChannel.MethodCallHandler, PluginR
                 result.error(TAG, "Invalid image data", null);
                 return;
             }
-            barcodeScanner.scanBarcodes(getInputImageByByteArray(imageBytes), new DocScanBarcodeScanner.BarcodeScannerCallback() {
+            
+            Log.d(TAG, "Starting QR code scan with image bytes: " + imageBytes.length);
+            
+            // Pass bytes directly to the scanner
+            barcodeScanner.scanBarcodes(imageBytes, new DocScanBarcodeScanner.BarcodeScannerCallback() {
                 @Override
                 public void onSuccess(String barcodeContent) {
+                    Log.d(TAG, "QR code scan success: " + barcodeContent);
                     result.success(barcodeContent);
                 }
 
                 @Override
                 public void onFailure(Exception e) {
+                    Log.e(TAG, "QR code scan failure", e);
                     result.error(TAG, "Failed to scan barcode", e);
                 }
             });
