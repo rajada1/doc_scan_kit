@@ -19,7 +19,7 @@ A Flutter plugin that performs document scanning, using ML Kit on Android and Vi
 | Edge Detection      | ✅       | ✅    |
 | Multi-page Scanning | ✅       | ✅    |
 | Text Recognizer     | ✅       | ✅    |
-| QrCode Recognizer   | ❌       | ✅    |
+| QrCode Recognizer   | ✅       | ✅    |
 
 ---
 
