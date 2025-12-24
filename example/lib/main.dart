@@ -1,7 +1,6 @@
-import 'dart:io';
+import 'package:doc_scan_kit/doc_scan_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:doc_scan_kit/doc_scan_kit.dart';
 import 'package:image_picker/image_picker.dart';
 
 class CustomScanResult {
@@ -53,35 +52,35 @@ class DocumentScannerScreen extends StatefulWidget {
 
 class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
   // iOS configuration options
+  DocScanKitFormat format = DocScanKitFormat.images;
   double compressionQuality = 0.2;
-  bool saveImage = true;
-  bool useQrCodeScanner = true;
-  bool useTextRecognizer = true;
+  bool useQrCodeScanner = false;
+  bool useTextRecognizer = false;
   Color color = Colors.orange;
-  ModalPresentationStyle modalPresentationStyle =
-      ModalPresentationStyle.overFullScreen;
+  ModalPresentationStyleIOS modalPresentationStyle =
+      ModalPresentationStyleIOS.overFullScreen;
 
   // Android configuration options
+  DocScanKitFormat formatAndroid = DocScanKitFormat.images;
   int pageLimit = 3;
   bool recognizerTextAndroid = false;
-  bool saveImageAndroid = true;
-  bool isGalleryImport = true;
+  bool isGalleryImport = false;
   ScannerModeAndroid scannerMode = ScannerModeAndroid.full;
 
   List<CustomScanResult> imageData = [];
   bool isLoading = false;
 
   Future<void> scan() async {
-    DocScanKit instance = DocScanKit(
-      iosOptions: DocumentScanKitOptionsiOS(
+    final instance = DocScanKit(
+      iosOptions: DocScanKitOptionsIOS(
         compressionQuality: compressionQuality,
-        saveImage: saveImage,
+        format: format,
         color: color,
         modalPresentationStyle: modalPresentationStyle,
       ),
-      androidOptions: DocumentScanKitOptionsAndroid(
+      androidOptions: DocScanKitOptionsAndroid(
         pageLimit: pageLimit,
-        saveImage: saveImageAndroid,
+        format: formatAndroid,
         isGalleryImport: isGalleryImport,
         scannerMode: scannerMode,
       ),
@@ -89,35 +88,35 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
     try {
       setState(() => isLoading = true);
 
-      final List<ScanResult> images = await instance.scanner();
-      List<CustomScanResult> results = [];
+      final List<DocScanKitResult> files = await instance.scanner();
+      final results = <CustomScanResult>[];
 
-      for (var image in images) {
-        CustomScanResult customResult = CustomScanResult(
-          imagesBytes: image.imagesBytes,
-          imagePath: image.imagePath,
-        );
-
-        // Processing text recognition if enabled
-        if ((recognizerTextAndroid && Platform.isAndroid) ||
-            (useTextRecognizer && Platform.isIOS)) {
-          try {
-            customResult.text = await instance.recognizeText(image.imagesBytes);
-          } catch (e) {
-            debugPrint('Text recognition failed: $e');
-          }
-        }
-
-        // Processing QR code if enabled
-        if (useQrCodeScanner) {
-          try {
-            customResult.qrCode = await instance.scanQrCode(image.imagesBytes);
-          } catch (e) {
-            debugPrint('QR Code scanning failed: $e');
-          }
-        }
-
-        results.add(customResult);
+      for (final file in files) {
+        // CustomScanResult customResult = CustomScanResult(
+        //   imagesBytes: file.imagesBytes,
+        //   imagePath: file.imagePath,
+        // );
+        //
+        // // Processing text recognition if enabled
+        // if ((recognizerTextAndroid && Platform.isAndroid) ||
+        //     (useTextRecognizer && Platform.isIOS)) {
+        //   try {
+        //     customResult.text = await instance.recognizeText(file.imagesBytes);
+        //   } catch (e) {
+        //     debugPrint('Text recognition failed: $e');
+        //   }
+        // }
+        //
+        // // Processing QR code if enabled
+        // if (useQrCodeScanner) {
+        //   try {
+        //     customResult.qrCode = await instance.scanQrCode(file.imagesBytes);
+        //   } catch (e) {
+        //     debugPrint('QR Code scanning failed: $e');
+        //   }
+        // }
+        //
+        // results.add(customResult);
       }
 
       setState(() => imageData = results);
@@ -142,15 +141,15 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
       }
 
       DocScanKit instance = DocScanKit(
-        iosOptions: DocumentScanKitOptionsiOS(
+        iosOptions: DocScanKitOptionsIOS(
           compressionQuality: compressionQuality,
-          saveImage: saveImage,
+          format: format,
           color: color,
           modalPresentationStyle: modalPresentationStyle,
         ),
-        androidOptions: DocumentScanKitOptionsAndroid(
+        androidOptions: DocScanKitOptionsAndroid(
           pageLimit: pageLimit,
-          saveImage: saveImageAndroid,
+          format: formatAndroid,
           isGalleryImport: isGalleryImport,
           scannerMode: scannerMode,
         ),
@@ -204,7 +203,7 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
         builder: (context) => ConfigurationScreen(
           // iOS options
           compressionQuality: compressionQuality,
-          saveImage: saveImage,
+          format: format,
           useQrCodeScanner: useQrCodeScanner,
           useTextRecognizer: useTextRecognizer,
           color: color,
@@ -212,31 +211,38 @@ class _DocumentScannerScreenState extends State<DocumentScannerScreen> {
           // Android options
           pageLimit: pageLimit,
           recognizerTextAndroid: recognizerTextAndroid,
-          saveImageAndroid: saveImageAndroid,
+          formatAndroid: formatAndroid,
           isGalleryImport: isGalleryImport,
           scannerMode: scannerMode,
           // Callbacks for updating options
-          onIOSOptionsChanged: (newCompressionQuality,
-              newSaveImage,
-              newUseQrCodeScanner,
-              newUseTextRecognizer,
-              newColor,
-              newModalStyle) {
+          onIOSOptionsChanged: (
+            newCompressionQuality,
+            newFormat,
+            newUseQrCodeScanner,
+            newUseTextRecognizer,
+            newColor,
+            newModalStyle,
+          ) {
             setState(() {
               compressionQuality = newCompressionQuality;
-              saveImage = newSaveImage;
+              format = newFormat;
               useQrCodeScanner = newUseQrCodeScanner;
               useTextRecognizer = newUseTextRecognizer;
               color = newColor;
               modalPresentationStyle = newModalStyle;
             });
           },
-          onAndroidOptionsChanged: (newPageLimit, newRecognizerText,
-              newSaveImage, newIsGalleryImport, newScannerMode) {
+          onAndroidOptionsChanged: (
+            newPageLimit,
+            newRecognizerText,
+            newFormat,
+            newIsGalleryImport,
+            newScannerMode,
+          ) {
             setState(() {
               pageLimit = newPageLimit;
               recognizerTextAndroid = newRecognizerText;
-              saveImageAndroid = newSaveImage;
+              formatAndroid = newFormat;
               isGalleryImport = newIsGalleryImport;
               scannerMode = newScannerMode;
             });
@@ -370,36 +376,48 @@ class ScanResultsList extends StatelessWidget {
 class ConfigurationScreen extends StatefulWidget {
   // iOS options
   final double compressionQuality;
-  final bool saveImage;
+  final DocScanKitFormat format;
   final bool useQrCodeScanner;
   final bool useTextRecognizer;
   final Color color;
-  final ModalPresentationStyle modalPresentationStyle;
+  final ModalPresentationStyleIOS modalPresentationStyle;
 
   // Android options
   final int pageLimit;
   final bool recognizerTextAndroid;
-  final bool saveImageAndroid;
+  final DocScanKitFormat formatAndroid;
   final bool isGalleryImport;
   final ScannerModeAndroid scannerMode;
 
   // Callbacks
-  final Function(double, bool, bool, bool, Color, ModalPresentationStyle)
-      onIOSOptionsChanged;
-  final Function(int, bool, bool, bool, ScannerModeAndroid)
-      onAndroidOptionsChanged;
+  final Function(
+    double compressionQuality,
+    DocScanKitFormat format,
+    bool useQrCodeScanner,
+    bool useTextRecognizer,
+    Color color,
+    ModalPresentationStyleIOS modalPresentationStyle,
+  ) onIOSOptionsChanged;
+
+  final Function(
+    int pageLimit,
+    bool recognizerTextAndroid,
+    DocScanKitFormat formatAndroid,
+    bool isGalleryImport,
+    ScannerModeAndroid scannerMode,
+  ) onAndroidOptionsChanged;
 
   const ConfigurationScreen({
     super.key,
     required this.compressionQuality,
-    required this.saveImage,
+    required this.format,
     required this.useQrCodeScanner,
     required this.useTextRecognizer,
     required this.color,
     required this.modalPresentationStyle,
     required this.pageLimit,
     required this.recognizerTextAndroid,
-    required this.saveImageAndroid,
+    required this.formatAndroid,
     required this.isGalleryImport,
     required this.scannerMode,
     required this.onIOSOptionsChanged,
@@ -416,15 +434,15 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
 
   // Local state variables
   late double _compressionQuality;
-  late bool _saveImage;
+  late DocScanKitFormat _format;
   late bool _useQrCodeScanner;
   late bool _useTextRecognizer;
   late Color _color;
-  late ModalPresentationStyle _modalPresentationStyle;
+  late ModalPresentationStyleIOS _modalPresentationStyle;
 
   late int _pageLimit;
   late bool _recognizerTextAndroid;
-  late bool _saveImageAndroid;
+  late DocScanKitFormat _formatAndroid;
   late bool _isGalleryImport;
   late ScannerModeAndroid _scannerMode;
 
@@ -435,7 +453,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
 
     // Initialize with widget values
     _compressionQuality = widget.compressionQuality;
-    _saveImage = widget.saveImage;
+    _format = widget.format;
     _useQrCodeScanner = widget.useQrCodeScanner;
     _useTextRecognizer = widget.useTextRecognizer;
     _color = widget.color;
@@ -443,7 +461,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
 
     _pageLimit = widget.pageLimit;
     _recognizerTextAndroid = widget.recognizerTextAndroid;
-    _saveImageAndroid = widget.saveImageAndroid;
+    _formatAndroid = widget.formatAndroid;
     _isGalleryImport = widget.isGalleryImport;
     _scannerMode = widget.scannerMode;
   }
@@ -478,7 +496,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
             onPressed: () {
               widget.onIOSOptionsChanged(
                 _compressionQuality,
-                _saveImage,
+                _format,
                 _useQrCodeScanner,
                 _useTextRecognizer,
                 _color,
@@ -487,7 +505,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
               widget.onAndroidOptionsChanged(
                 _pageLimit,
                 _recognizerTextAndroid,
-                _saveImageAndroid,
+                _formatAndroid,
                 _isGalleryImport,
                 _scannerMode,
               );
@@ -506,15 +524,32 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Scanner Options',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Scanner Options',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
-                SwitchListTile(
-                  title: const Text('Save Image'),
-                  subtitle: const Text('Save scanned image to gallery'),
-                  value: _saveImage,
-                  onChanged: (value) => setState(() => _saveImage = value),
+                const Text(
+                  'Result Format',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                DropdownButtonFormField<DocScanKitFormat>(
+                  initialValue: _format,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _format = value);
+                    }
+                  },
+                  items: DocScanKitFormat.values
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e.name),
+                          ))
+                      .toList(),
                 ),
                 SwitchListTile(
                   title: const Text('Use QR Code Scanner'),
@@ -557,8 +592,8 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
                 const Divider(),
                 const Text('Modal Presentation Style',
                     style: TextStyle(fontWeight: FontWeight.bold)),
-                DropdownButtonFormField<ModalPresentationStyle>(
-                  value: _modalPresentationStyle,
+                DropdownButtonFormField<ModalPresentationStyleIOS>(
+                  initialValue: _modalPresentationStyle,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -568,7 +603,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
                       setState(() => _modalPresentationStyle = value);
                     }
                   },
-                  items: ModalPresentationStyle.values
+                  items: ModalPresentationStyleIOS.values
                       .map((style) => DropdownMenuItem(
                             value: style,
                             child: Text(style.toString().split('.').last),
@@ -585,9 +620,10 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Scanner Options',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Scanner Options',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 ListTile(
                   title: const Text('Page Limit'),
@@ -625,12 +661,25 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
                   onChanged: (value) =>
                       setState(() => _useQrCodeScanner = value),
                 ),
-                SwitchListTile(
-                  title: const Text('Save Image'),
-                  subtitle: const Text('Save scanned image to gallery'),
-                  value: _saveImageAndroid,
-                  onChanged: (value) =>
-                      setState(() => _saveImageAndroid = value),
+                const Text('Result Format',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                DropdownButtonFormField<DocScanKitFormat>(
+                  initialValue: _formatAndroid,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _formatAndroid = value);
+                    }
+                  },
+                  items: DocScanKitFormat.values
+                      .map((mode) => DropdownMenuItem(
+                            value: mode,
+                            child: Text(mode.name),
+                          ))
+                      .toList(),
                 ),
                 SwitchListTile(
                   title: const Text('Gallery Import'),
@@ -643,7 +692,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen>
                 const Text('Scanner Mode',
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 DropdownButtonFormField<ScannerModeAndroid>(
-                  value: _scannerMode,
+                  initialValue: _scannerMode,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12),

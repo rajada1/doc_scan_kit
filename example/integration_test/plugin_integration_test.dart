@@ -15,8 +15,8 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('scan test', (WidgetTester tester) async {
-    final DocScanKit plugin = DocScanKit();
-    final List<ScanResult> images = await plugin.scanner();
+    const plugin = DocScanKit();
+    final images = await plugin.scanner();
     expect(images.isNotEmpty, List<Uint8List>);
   });
 }

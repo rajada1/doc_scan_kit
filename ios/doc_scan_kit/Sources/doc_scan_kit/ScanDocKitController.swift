@@ -2,21 +2,22 @@ import Foundation
 import VisionKit
 import Vision
 import Flutter
+import PDFKit
 
 @available(iOS 13.0, *)
 class ScanDocKitController: UIViewController, VNDocumentCameraViewControllerDelegate {
     
     let result: FlutterResult
     let compressionQuality: CGFloat
-    let saveImage: Bool
+    let format: DocScanKitFormat
     let colorList : [NSNumber]
     var activityIndicator: UIActivityIndicatorView!
     
     
-    init(result: @escaping FlutterResult, compressionQuality: CGFloat, saveImage: Bool, colorList:[NSNumber] ) {
+    init(result: @escaping FlutterResult, compressionQuality: CGFloat, format: DocScanKitFormat, colorList:[NSNumber] ) {
         self.result = result
         self.compressionQuality = compressionQuality
-        self.saveImage = saveImage
+        self.format = format
         self.colorList = colorList
         super.init(nibName: nil, bundle: nil)
     }
@@ -46,8 +47,6 @@ class ScanDocKitController: UIViewController, VNDocumentCameraViewControllerDele
         }
     }
     
-    
-    
     func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
         result(nil)
         controller.dismiss(animated: true)
@@ -61,23 +60,39 @@ class ScanDocKitController: UIViewController, VNDocumentCameraViewControllerDele
     }
     
     func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
-        
-        controller.dismiss(animated: true){
+        controller.dismiss(animated: true) {
             var resultArray: [[String: Any?]] = []
-            for i in (0 ..< scan.pageCount) {
-                let image = scan.imageOfPage(at: i)
-                if let imageData = image.jpegData(compressionQuality: self.compressionQuality) {
-                    var dict = ["path": "", "bytes": FlutterStandardTypedData(bytes: imageData)] as [String: Any?]
-                    
-                    if self.saveImage {
-                        dict["path"] = self.saveImg(image: imageData)
-                    }
-                    
-                    resultArray.append(dict)
+            
+            switch self.format {
+            case .document:
+                // Save as PDF with each image on separate page
+                if let pdfPath = self.createPDF(from: scan) {
+                    resultArray.append([
+                        "type": "pdf",
+                        "path": pdfPath
+                    ])
                 } else {
-                    print("Erro converter imagem para jpeg")
+                    print("Error creating PDF")
+                }
+            case .images:
+                // Save as individual images
+                for i in (0 ..< scan.pageCount) {
+                    autoreleasepool {
+                        let image = scan.imageOfPage(at: i)
+                        if let imageData = image.jpegData(compressionQuality: self.compressionQuality) {
+                            let filePath = self.saveImg(image: imageData)
+                            
+                            resultArray.append([
+                              "type": "jpeg",
+                              "path": filePath
+                            ])
+                        } else {
+                            print("Error converting image to jpeg")
+                        }
+                    }
                 }
             }
+
             
             self.activityIndicator.stopAnimating()
             self.result(resultArray)
@@ -89,9 +104,9 @@ class ScanDocKitController: UIViewController, VNDocumentCameraViewControllerDele
         guard let directory = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) as NSURL else {
             return nil
         }
-        let fileName = UUID().uuidString
+        let fileName = UUID().uuidString + ".jpeg"
         
-        guard let filePath = directory.appendingPathComponent(fileName + ".jpeg") else {
+        guard let filePath = directory.appendingPathComponent(fileName) else {
             return nil
         }
         do {
@@ -99,6 +114,36 @@ class ScanDocKitController: UIViewController, VNDocumentCameraViewControllerDele
             return filePath.path
         } catch {
             print(error.localizedDescription)
+            return nil
+        }
+    }
+    
+    func createPDF(from scan: VNDocumentCameraScan) -> String? {
+        guard let directory = try? FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else {
+            return nil
+        }
+        
+        let fileName = UUID().uuidString + ".pdf"
+        let pdfURL = directory.appendingPathComponent(fileName)
+        
+        let pdfDocument = PDFDocument()
+        
+        for i in 0..<scan.pageCount {
+            autoreleasepool {
+                let image = scan.imageOfPage(at: i)
+                
+                // Apply compression quality to the image
+                if let imageData = image.jpegData(compressionQuality: self.compressionQuality),
+                   let compressedImage = UIImage(data: imageData),
+                   let pdfPage = PDFPage(image: compressedImage) {
+                    pdfDocument.insert(pdfPage, at: i)
+                }
+            }
+        }
+        
+        if pdfDocument.write(to: pdfURL) {
+            return pdfURL.path
+        } else {
             return nil
         }
     }

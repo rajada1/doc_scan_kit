@@ -23,5 +23,7 @@ flutter:
       android:
         package: com.rajada1_docscan_kit.doc_scan_kit
         pluginClass: DocScanKitPlugin
+        dartPluginClass: DocScanKitPlatformAndroid
       ios:
         pluginClass: DocScanKitPlugin
+        dartPluginClass: DocScanKitPlatformIOS
