@@ -46,7 +46,13 @@ public class DocScanKitPlugin: NSObject, FlutterPlugin {
         let compressionQuality = iosOptions["compressionQuality"] as? CGFloat ?? 1.0
         let saveImage = iosOptions["saveImage"] as? Bool ?? true
         let colorList = iosOptions["color"] as? [NSNumber] ?? []
-        if let viewController = UIApplication.shared.delegate?.window??.rootViewController as? FlutterViewController {
+        let rootViewController = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }?
+            .rootViewController
+
+        if let viewController = rootViewController {
             let scanController = ScanDocKitController(result: result, compressionQuality: compressionQuality, saveImage:saveImage,colorList: colorList)
             scanController.isModalInPresentation = true
             scanController.modalPresentationStyle = presentationStyle
@@ -161,7 +167,13 @@ public class DocScanKitPlugin: NSObject, FlutterPlugin {
       }
 
     case "scanKit#closeDocumentScanner":
-      if let viewController = UIApplication.shared.delegate?.window??.rootViewController {
+      let rootViewController = UIApplication.shared.connectedScenes
+          .compactMap { $0 as? UIWindowScene }
+          .flatMap { $0.windows }
+          .first { $0.isKeyWindow }?
+          .rootViewController
+
+      if let viewController = rootViewController {
         viewController.presentedViewController?.dismiss(animated: true)
       }
       result(nil)

@@ -1,6 +1,6 @@
 name: doc_scan_kit
 description: "Flutter plugin that performs document scanning, using ML Kit on Android and Vision Kit on iOS"
-version: 0.1.0
+version: 0.2.0
 homepage: https://github.com/rajada1/doc_scan_kit
 
 environment:
